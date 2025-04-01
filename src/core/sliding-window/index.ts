@@ -53,15 +53,19 @@ export function truncateConversation(
 			typeof message.content === "string"
 				? message.content
 				: message.content.map((c) => (c.type === "text" ? c.text : "")).join("")
-		const isFileOrSearch =
-			content.trim().startsWith("[read_file") ||
-			content.trim().startsWith("[search_files") ||
-			content.trim().startsWith("[list_files")
-		const hasError = content.includes("[ERROR]")
-		const keep = !isFileOrSearch && !hasError
+		const isUtilityMessage =
+			content.includes("[read_file") ||
+			content.includes("[search_files") ||
+			content.includes("[list_files") ||
+			content.includes("<write_to_file>") ||
+			content.includes("[list_code_definition_names") ||
+			content.includes("[switch_mode") ||
+			content.includes("[ERROR]") ||
+			content.includes("[TASK RESUMPTION]")
+		const keep = !isUtilityMessage
 		outputChannel.appendLine(
 			`- ${keep ? "KEEPING" : "REMOVING"} message: role=${message.role} ` +
-				`content=${JSON.stringify(content).slice(0, 50)}...`,
+				`content=${JSON.stringify(content).slice(0, 100)}...`,
 		)
 		return keep
 	})
