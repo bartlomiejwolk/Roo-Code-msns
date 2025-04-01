@@ -44,6 +44,7 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 	const { t } = useTranslation()
 	const { apiConfiguration, currentTaskItem } = useExtensionState()
 	const { selectedModelInfo } = useMemo(() => normalizeApiConfiguration(apiConfiguration), [apiConfiguration])
+	const [isTaskExpanded, setIsTaskExpanded] = useState(false)
 	const [isTextExpanded, setIsTextExpanded] = useState(false)
 	const [showSeeMore, setShowSeeMore] = useState(false)
 	const textContainerRef = useRef<HTMLDivElement>(null)
@@ -164,7 +165,10 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 							flexGrow: 1,
 							minWidth: 0, // This allows the div to shrink below its content size
 						}}
-						onClick={() => {}}>
+						onClick={() => setIsTaskExpanded(!isTaskExpanded)}>
+						<div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+							<span className={`codicon codicon-chevron-${isTaskExpanded ? "down" : "right"}`}></span>
+						</div>
 						<div
 							style={{
 								marginLeft: 6,
@@ -176,9 +180,9 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 							}}>
 							<span style={{ fontWeight: "bold" }}>
 								{t("chat:task.title")}
-								{!isTextExpanded && ":"}
+								{!isTaskExpanded && ":"}
 							</span>
-							{!isTextExpanded && (
+							{!isTaskExpanded && (
 								<>
 									<span style={{ marginLeft: 4 }}>{highlightMentions(task.text, false)}</span>
 									<div
@@ -244,7 +248,7 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 						<span className="codicon codicon-close"></span>
 					</VSCodeButton>
 				</div>
-				{isTextExpanded && (
+				{isTaskExpanded && (
 					<>
 						<div
 							ref={textContainerRef}
@@ -340,7 +344,7 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 								{!isCostAvailable && <TaskActions item={currentTaskItem} />}
 							</div>
 
-							{isTextExpanded && contextWindow > 0 && (
+							{isTaskExpanded && contextWindow > 0 && (
 								<div
 									className={`w-full flex ${windowWidth < 400 ? "flex-col" : "flex-row"} gap-1 h-auto`}>
 									<ContextWindowProgress
