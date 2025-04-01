@@ -12,6 +12,7 @@ import getFolderSize from "get-folder-size"
 import { serializeError } from "serialize-error"
 import * as vscode from "vscode"
 
+import { truncateConversation, TOKEN_BUFFER_PERCENTAGE } from "./sliding-window"
 import { TokenUsage } from "../schemas"
 import { ApiHandler, buildApiHandler } from "../api"
 import { ApiStream } from "../api/transform/stream"
@@ -57,7 +58,6 @@ import { RooIgnoreController } from "./ignore/RooIgnoreController"
 import { AssistantMessageContent, parseAssistantMessage, ToolParamName, ToolUseName } from "./assistant-message"
 import { formatResponse } from "./prompts/responses"
 import { SYSTEM_PROMPT } from "./prompts/system"
-import { truncateConversationIfNeeded } from "./sliding-window"
 import { ClineProvider } from "./webview/ClineProvider"
 import { BrowserSession } from "../services/browser/BrowserSession"
 import { formatLanguage } from "../shared/language"
@@ -1159,23 +1159,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 				cacheReads = 0,
 			}: ClineApiReqInfo = JSON.parse(previousRequest)
 
-			const totalTokens = tokensIn + tokensOut + cacheWrites + cacheReads
-
-			// Default max tokens value for thinking models when no specific value is set
-			const DEFAULT_THINKING_MODEL_MAX_TOKENS = 16_384
-
-			const modelInfo = this.api.getModel().info
-			const maxTokens = modelInfo.thinking
-				? this.apiConfiguration.modelMaxTokens || DEFAULT_THINKING_MODEL_MAX_TOKENS
-				: modelInfo.maxTokens
-			const contextWindow = modelInfo.contextWindow
-			const trimmedMessages = await truncateConversationIfNeeded({
-				messages: this.apiConversationHistory,
-				totalTokens,
-				maxTokens,
-				contextWindow,
-				apiHandler: this.api,
-			})
+			const trimmedMessages = truncateConversation(this.apiConversationHistory, 0) // Cannot find name 'truncateConversation'. AI!
 
 			if (trimmedMessages !== this.apiConversationHistory) {
 				await this.overwriteApiConversationHistory(trimmedMessages)
