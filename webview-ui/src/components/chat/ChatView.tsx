@@ -869,10 +869,10 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 		() =>
 			debounce(
 				() => {
-					/*virtuosoRef.current?.scrollTo({
+					virtuosoRef.current?.scrollTo({
 						top: Number.MAX_SAFE_INTEGER,
 						behavior: "smooth",
-					})*/
+					})
 				},
 				10,
 				{ immediate: true },
@@ -881,10 +881,10 @@ const ChatView = ({ isHidden, showAnnouncement, hideAnnouncement, showHistoryVie
 	)
 
 	const scrollToBottomAuto = useCallback(() => {
-		/*virtuosoRef.current?.scrollTo({
+		virtuosoRef.current?.scrollTo({
 			top: Number.MAX_SAFE_INTEGER,
 			behavior: "auto", // instant causes crash
-		})*/
+		})
 	}, [])
 
 	// scroll when user toggles certain rows
