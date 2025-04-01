@@ -133,13 +133,13 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 	const shouldShowPromptCacheInfo = doesModelSupportPromptCache && apiConfiguration?.apiProvider !== "openrouter"
 
 	return (
-		<div style={{ padding: "10px 13px 10px 13px" }}>
+		<div style={{ padding: "5px 8px 5px 8px" }}>
 			<div
 				style={{
 					backgroundColor: "var(--vscode-badge-background)",
 					color: "var(--vscode-badge-foreground)",
 					borderRadius: "3px",
-					padding: "9px 10px 9px 14px",
+					padding: "4px 5px 4px 7px",
 					display: "flex",
 					flexDirection: "column",
 					gap: 6,
@@ -183,26 +183,63 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 								{!isTaskExpanded && ":"}
 							</span>
 							{!isTaskExpanded && (
-								<span style={{ marginLeft: 4 }}>{highlightMentions(task.text, false)}</span>
+								<>
+									<span style={{ marginLeft: 4 }}>{highlightMentions(task.text, false)}</span>
+									<div
+										style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px" }}>
+										<span style={{ fontWeight: "bold" }}>{t("chat:task.tokens")}</span>
+										<span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+											<i
+												className="codicon codicon-arrow-up"
+												style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "-2px" }}
+											/>
+											{formatLargeNumber(tokensIn || 0)}
+										</span>
+										<span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+											<i
+												className="codicon codicon-arrow-down"
+												style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "-2px" }}
+											/>
+											{formatLargeNumber(tokensOut || 0)}
+										</span>
+										<span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+											<i
+												className="codicon codicon-symbol-namespace"
+												style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "-2px" }}
+											/>
+											{formatLargeNumber(contextTokens || 0)}/{formatLargeNumber(contextWindow)}
+										</span>
+										{shouldShowPromptCacheInfo &&
+											(cacheReads !== undefined || cacheWrites !== undefined) && (
+												<>
+													<span style={{ fontWeight: "bold" }}>{t("chat:task.cache")}</span>
+													<span className="flex items-center gap-1">
+														<i
+															className="codicon codicon-database"
+															style={{ fontSize: "10px", fontWeight: "bold" }}
+														/>
+														+{formatLargeNumber(cacheWrites || 0)}
+													</span>
+													<span className="flex items-center gap-1">
+														<i
+															className="codicon codicon-arrow-right"
+															style={{ fontSize: "10px", fontWeight: "bold" }}
+														/>
+														{formatLargeNumber(cacheReads || 0)}
+													</span>
+												</>
+											)}
+										{isCostAvailable && (
+											<>
+												<span className="font-bold">{t("chat:task.apiCost")}</span>
+												<span>${totalCost?.toFixed(4)}</span>
+											</>
+										)}
+									</div>
+								</>
 							)}
 						</div>
 					</div>
-					{!isTaskExpanded && isCostAvailable && (
-						<div
-							style={{
-								marginLeft: 10,
-								backgroundColor: "color-mix(in srgb, var(--vscode-badge-foreground) 70%, transparent)",
-								color: "var(--vscode-badge-background)",
-								padding: "2px 4px",
-								borderRadius: "500px",
-								fontSize: "11px",
-								fontWeight: 500,
-								display: "inline-block",
-								flexShrink: 0,
-							}}>
-							${totalCost?.toFixed(4)}
-						</div>
-					)}
 					<VSCodeButton
 						appearance="icon"
 						onClick={onClose}
