@@ -242,6 +242,13 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 					</div>
 					<VSCodeButton
 						appearance="icon"
+						onClick={() => task.text && navigator.clipboard.writeText(task.text)}
+						style={{ marginLeft: 6, flexShrink: 0, color: "var(--vscode-badge-foreground)" }}
+						title={t("chat:task.copy")}>
+						<span className="codicon codicon-copy"></span>
+					</VSCodeButton>
+					<VSCodeButton
+						appearance="icon"
 						onClick={onClose}
 						style={{ marginLeft: 6, flexShrink: 0, color: "var(--vscode-badge-foreground)" }}
 						title={t("chat:task.closeAndStart")}>
