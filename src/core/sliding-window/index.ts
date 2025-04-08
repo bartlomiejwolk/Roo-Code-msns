@@ -1,13 +1,28 @@
 import * as vscode from "vscode"
+import * as fs from "fs/promises"
+import * as fsSync from "fs"
+import * as path from "path"
 import { Anthropic } from "@anthropic-ai/sdk"
 import { ApiHandler } from "../../api"
+import { formatContentBlockToMarkdown } from "../../integrations/misc/export-markdown"
+
+function getContextLogPath(): string {
+    const logDir = path.join(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd(), '.roo')
+    // Ensure directory exists
+    if (!fsSync.existsSync(logDir)) {
+        fsSync.mkdirSync(logDir, { recursive: true })
+    }
+    return path.join(logDir, 'context-summary.log')
+}
 
 const outputChannel = vscode.window.createOutputChannel("Anthropic Sliding Window")
 
+
 /**
- * Default percentage of the context window to use as a buffer when deciding when to truncate
+ * Number of recent messages to preserve when truncating conversation history
+ * These messages are kept regardless of their type (user/assistant/utility)
  */
-export const TOKEN_BUFFER_PERCENTAGE = 0.1
+export const PRESERVE_RECENT_MESSAGES = 3
 
 /**
  * Counts tokens for user content using the provider's token counting implementation.
@@ -35,11 +50,15 @@ export async function estimateTokenCount(
  */
 export function truncateConversation(
 	messages: Anthropic.Messages.MessageParam[],
-	_fracToRemove: number, // Still accept but ignore the parameter for backward compatibility
+	messagesToPreserve: number = PRESERVE_RECENT_MESSAGES,
 ): Anthropic.Messages.MessageParam[] {
-	outputChannel.appendLine(`Starting truncation of ${messages.length} messages:`)
+	outputChannel.appendLine(`Starting truncation of ${messages.length} messages (preserving last ${messagesToPreserve} messages):`)
 
-	const filtered = messages.filter((message, index) => {
+	// Always preserve the last N messages regardless of type
+	const preservedMessages = messages.slice(-messagesToPreserve)
+	
+	// Filter remaining messages (excluding preserved ones)
+	const filtered = messages.slice(0, -messagesToPreserve).filter((message, index) => {
 		// Never truncate the last message
 		if (index === messages.length - 1) {
 			outputChannel.appendLine(
@@ -70,8 +89,99 @@ export function truncateConversation(
 		return keep
 	})
 
-	outputChannel.appendLine(`Truncation complete. Kept ${filtered.length} of ${messages.length} messages.`)
-	return filtered
+	const result = [...filtered, ...preservedMessages]
+	outputChannel.appendLine(`Truncation complete. Kept ${result.length} of ${messages.length} messages.`)
+	return result
+}
+
+/**
+ * Summarizes conversation history while preserving the last message raw.
+ * Maintains maximum technical detail for task continuity.
+ *
+ * @param {Anthropic.Messages.MessageParam[]} messages - Full conversation history
+ * @param {ApiHandler} apiHandler - API handler instance
+ * @returns {Promise<Anthropic.Messages.MessageParam[]>} Messages with summarized history + raw last message
+ */
+export async function summarizeConversation(
+  messages: Anthropic.Messages.MessageParam[],
+  apiHandler: ApiHandler,
+): Promise<Anthropic.Messages.MessageParam[]> {
+  if (messages.length <= 1) return messages;
+
+  // Always keep last message completely raw
+  const lastMessage = messages[messages.length - 1];
+  const toSummarize = messages.slice(0, -1);
+
+  // Create a fresh copy of messages to summarize with explicit instruction
+  const messagesToSummarize: Anthropic.Messages.MessageParam[] = [
+    ...toSummarize,
+    {
+      role: "user",
+      content: "Please provide a comprehensive technical summary covering all key points. Include:\n" +
+        "- The original task description (first user message) exactly as stated\n" +
+        "- All relevant files mentioned with their full paths\n" +
+        "- Every important symbol (functions, classes, variables) we discussed\n" +
+        "- All major decisions made and the reasoning behind them\n" +
+        "- Any errors encountered and how we fixed them\n" +
+        "- All commands executed and their outcomes\n" +
+        "- The current state of the task\n\n" +
+        "Make it detailed (4-5 paragraphs) while keeping it concise and technical. Avoid conversational openers and focus on factual accuracy."
+    }
+  ];
+
+  try {
+    const summaryResponse = await apiHandler.createMessage(
+        `You are summarizing a technical conversation in detail. Your summary should:
+* Always begin with the original task description (first user message) exactly as stated
+* Be direct and factual without conversational openers
+* Mention every relevant file with its full path
+* Note all important code symbols (functions, classes, variables) we discussed
+* Explain technical details concisely
+* Maintain the chronological sequence of events
+* Highlight all key decisions, actions, and their reasoning
+* Include any errors and how they were resolved
+* Be comprehensive (4-5 paragraphs) while remaining technical and to-the-point`,
+        messagesToSummarize
+    );
+
+    let summaryContent: string = ""
+    for await (const chunk of summaryResponse) {
+        if (chunk.type === "text") {
+            summaryContent += chunk.text
+        } else if (chunk.type === "reasoning") {
+            // Optional: Handle reasoning chunks if needed
+        }
+    }
+
+    const summarizedMessages: Anthropic.Messages.MessageParam[] = [
+      {
+        role: "assistant" as const,
+        content: `### TECHNICAL CONTEXT RECAP ###\n${summaryContent}`
+      },
+      lastMessage // Append raw final message
+    ];
+
+    // Log only the summarized context that will be sent to the main model
+    try {
+      const logPath = getContextLogPath()
+      const logContent = summarizedMessages
+        .map(msg => `${msg.role.toUpperCase()}:\n${
+          typeof msg.content === 'string' 
+            ? msg.content 
+            : msg.content.map(c => c.type === 'text' ? c.text : `[${c.type} content]`).join('\n')
+        }`)
+        .join('\n\n')
+      await fs.writeFile(logPath, logContent)
+      outputChannel.appendLine(`Context summary logged to ${logPath}`)
+    } catch (logError) {
+      outputChannel.appendLine(`Failed to log context summary: ${logError}`)
+    }
+
+    return summarizedMessages
+  } catch (error) {
+    outputChannel.appendLine(`Summarization failed, falling back to original messages: ${error}`);
+    return messages; // Fallback to original if summarization fails
+  }
 }
 
 /**

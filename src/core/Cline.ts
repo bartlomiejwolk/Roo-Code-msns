@@ -12,7 +12,7 @@ import getFolderSize from "get-folder-size"
 import { serializeError } from "serialize-error"
 import * as vscode from "vscode"
 
-import { truncateConversation, TOKEN_BUFFER_PERCENTAGE } from "./sliding-window"
+import { summarizeConversation, truncateConversation, PRESERVE_RECENT_MESSAGES } from "./sliding-window"
 import { TokenUsage } from "../schemas"
 import { ApiHandler, buildApiHandler } from "../api"
 import { ApiStream } from "../api/transform/stream"
@@ -1147,7 +1147,8 @@ export class Cline extends EventEmitter<ClineEvents> {
 			)
 		})()
 
-		// If the previous API request's total token usage is close to the context window, truncate the conversation history to free up space for the new request
+		// If the previous API request's total token usage is close to the context window, 
+		// summarize the conversation history to free up space for the new request
 		if (previousApiReqIndex >= 0) {
 			const previousRequest = this.clineMessages[previousApiReqIndex]?.text
 			if (!previousRequest) return
@@ -1159,39 +1160,30 @@ export class Cline extends EventEmitter<ClineEvents> {
 				cacheReads = 0,
 			}: ClineApiReqInfo = JSON.parse(previousRequest)
 
-			const trimmedMessages = truncateConversation(this.apiConversationHistory, 0) // Cannot find name 'truncateConversation'. AI!
-
-			if (trimmedMessages !== this.apiConversationHistory) {
-				await this.overwriteApiConversationHistory(trimmedMessages)
-			}
+			// Summarize all but last message with maximum detail
+			const summarizedHistory = await summarizeConversation(this.apiConversationHistory, this.api)
+			await this.overwriteApiConversationHistory(summarizedHistory)
 		}
 
 		// Clean conversation history by:
 		// 1. Converting to Anthropic.MessageParam by spreading only the API-required properties
 		// 2. Converting image blocks to text descriptions if model doesn't support images
-		const cleanConversationHistory = this.apiConversationHistory.map(({ role, content }) => {
-			// Handle array content (could contain image blocks)
-			if (Array.isArray(content)) {
-				if (!this.api.getModel().info.supportsImages) {
-					// Convert image blocks to text descriptions
-					content = content.map((block) => {
-						if (block.type === "image") {
-							// Convert image blocks to text descriptions
-							// Note: We can't access the actual image content/url due to API limitations,
-							// but we can indicate that an image was present in the conversation
-							return {
-								type: "text",
-								text: "[Referenced image in conversation]",
-							}
-						}
-						return block
-					})
-				}
+		// Summarize all but last message before each request
+		const preparedMessages = await summarizeConversation(this.apiConversationHistory, this.api);
+		
+		// Still handle image conversion if needed
+		const cleanConversationHistory = preparedMessages.map(({ role, content }) => {
+			if (Array.isArray(content) && !this.api.getModel().info.supportsImages) {
+				content = content.map(block => 
+					block.type === "image" 
+						? { type: "text", text: "[Referenced image in conversation]" } 
+						: block
+				);
 			}
-			return { role, content }
-		})
+			return { role, content };
+		});
 
-		const stream = this.api.createMessage(systemPrompt, cleanConversationHistory)
+		const stream = this.api.createMessage(systemPrompt, cleanConversationHistory);
 		const iterator = stream[Symbol.asyncIterator]()
 
 		try {

@@ -33,3 +33,4 @@ docs/_site/
 #Logging
 logs
 .aider*
+/.roo/context-summary.log
