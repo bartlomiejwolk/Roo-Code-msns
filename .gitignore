@@ -34,3 +34,5 @@ docs/_site/
 logs
 .aider*
 /.roo/context-summary.log
+
+.vs
