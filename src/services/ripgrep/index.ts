@@ -141,6 +141,7 @@ export async function regexSearchFiles(
 	regex: string,
 	filePattern?: string,
 	rooIgnoreController?: RooIgnoreController,
+	caseInsensitive: boolean = false,
 ): Promise<string> {
 	const vscodeAppRoot = vscode.env.appRoot
 	const rgPath = await getBinPath(vscodeAppRoot)
@@ -149,7 +150,14 @@ export async function regexSearchFiles(
 		throw new Error("Could not find ripgrep binary")
 	}
 
-	const args = ["--json", "-e", regex, "--glob", filePattern || "*", "--context", "1", directoryPath]
+	const args = ["--json", "-e", regex]
+	
+	// Add case-insensitive flag if requested
+	if (caseInsensitive) {
+		args.push("-i")
+	}
+	
+	args.push("--glob", filePattern || "*", "--context", "1", directoryPath)
 
 	let output: string
 	try {

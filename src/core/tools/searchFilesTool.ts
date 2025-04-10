@@ -52,6 +52,7 @@ export async function searchFilesTool(
 				searchText,
 				filePattern,
 				cline.rooIgnoreController,
+				true // Make search case-insensitive by default
 			)
 			const completeMessage = JSON.stringify({
 				...sharedMessageProps,
