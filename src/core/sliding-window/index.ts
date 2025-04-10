@@ -15,6 +15,29 @@ function getContextLogPath(): string {
     return path.join(logDir, 'context-summary.log')
 }
 
+// Helper function to get the content of a prompt file.
+// It creates the file with default content if it doesn't exist.
+async function getPromptContent(fileName: string, defaultContent: string): Promise<string> {
+    // Use a "prompts" subfolder under the .roo directory
+    const promptsDir = path.join(
+        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd(),
+        ".roo",
+        "prompts"
+    );
+    try {
+        await fs.access(promptsDir);
+    } catch {
+        await fs.mkdir(promptsDir, { recursive: true });
+    }
+    const filePath = path.join(promptsDir, fileName);
+    try {
+        await fs.access(filePath);
+    } catch {
+        await fs.writeFile(filePath, defaultContent, "utf8");
+    }
+    return fs.readFile(filePath, "utf8");
+}
+
 const outputChannel = vscode.window.createOutputChannel("Anthropic Sliding Window")
 
 
@@ -112,26 +135,32 @@ export async function summarizeConversation(
   const lastMessage = messages[messages.length - 1];
   const toSummarize = messages.slice(0, -1);
 
-  // Create a fresh copy of messages to summarize with explicit instruction
+  // Define the default text for the appended user prompt
+  const defaultPrompt1 = `Please provide a comprehensive technical summary covering all key points. Include:
+- The original task description (first user message) exactly as stated
+- All relevant files mentioned with their full paths
+- Every important symbol (functions, classes, variables) we discussed
+- All major decisions made and the reasoning behind them
+- Any errors encountered and how we fixed them
+- All commands executed and their outcomes
+- The current state of the task
+
+Make it detailed (4-5 paragraphs) while keeping it concise and technical. Avoid conversational openers and focus on factual accuracy.`;
+
+  // Load prompt1 from file (it will be created if missing)
+  const prompt1 = await getPromptContent("context-summary-prompt1.txt", defaultPrompt1);
+
   const messagesToSummarize: Anthropic.Messages.MessageParam[] = [
     ...toSummarize,
     {
       role: "user",
-      content: "Please provide a comprehensive technical summary covering all key points. Include:\n" +
-        "- The original task description (first user message) exactly as stated\n" +
-        "- All relevant files mentioned with their full paths\n" +
-        "- Every important symbol (functions, classes, variables) we discussed\n" +
-        "- All major decisions made and the reasoning behind them\n" +
-        "- Any errors encountered and how we fixed them\n" +
-        "- All commands executed and their outcomes\n" +
-        "- The current state of the task\n\n" +
-        "Make it detailed (4-5 paragraphs) while keeping it concise and technical. Avoid conversational openers and focus on factual accuracy."
+      content: prompt1
     }
   ];
 
   try {
-    const summaryResponse = await apiHandler.createMessage(
-        `You are summarizing a technical conversation in detail. Your summary should:
+    // Define the default text for the API call prompt
+    const defaultPrompt2 = `You are summarizing a technical conversation in detail. Your summary should:
 * Always begin with the original task description (first user message) exactly as stated
 * Be direct and factual without conversational openers
 * Mention every relevant file with its full path
@@ -140,8 +169,14 @@ export async function summarizeConversation(
 * Maintain the chronological sequence of events
 * Highlight all key decisions, actions, and their reasoning
 * Include any errors and how they were resolved
-* Be comprehensive (4-5 paragraphs) while remaining technical and to-the-point`,
-        messagesToSummarize
+* Be comprehensive (4-5 paragraphs) while remaining technical and to-the-point`;
+
+    // Load prompt2 from file (it will be auto-created using defaultPrompt2 if missing)
+    const prompt2 = await getPromptContent("context-summary-prompt2.txt", defaultPrompt2);
+
+    const summaryResponse = await apiHandler.createMessage(
+      prompt2,
+      messagesToSummarize
     );
 
     let summaryContent: string = ""

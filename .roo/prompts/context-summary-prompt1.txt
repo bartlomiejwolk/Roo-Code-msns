@@ -1,0 +1,17 @@
+Please provide a comprehensive technical summary covering all key points in paragraph form. 
+
+Address the original task description exactly as stated.
+
+Include all relevant files with their full paths; every important symbol (functions, classes, variables) we discussed; all major decisions made and the reasoning behind them; any errors encountered and how we fixed them; all commands executed and their outcomes; and the current state of the task. 
+
+When summarizing conversations, identify and consolidate duplicate information, mention each unique point only once, and prioritize key insights, decisions, and unresolved issues. 
+
+When summarizing our conversation, do not include any tool use syntax or command blocks (like <search_files>, <invoke>, etc.) in your summary. Instead, simply describe what tools were used in plain language (e.g., "We searched for files containing 'damage' in the src directory" rather than showing the actual command syntax). Focus on the information discovered and decisions made, not the specific command syntax used to obtain that information.
+
+For any file contents or search results reviewed, summarize the most relevant and important information from these sources; include key data points, patterns, or insights discovered; and preserve critical technical details needed to understand the task. Do it in form of paragraphs. Don't use any formatting like headers, bulletpoints, etc.
+
+Prioritize recent developments in the conversation with greater detail and thoroughness, while still including essential earlier context. The most recent content should receive the most comprehensive coverage, but don't omit older information crucial to understanding the task's progression.
+
+Make it detailed (over multiple -as needed, not too long paragraphs) while keeping it concise and technical. Avoid conversational openers and focus on factual accuracy.
+
+Do not include information we haven't discussed. If we haven't talked about a particular aspect, simply omit that section rather than inventing details. Focus on accuracy and only include what was explicitly mentioned in our conversation.
