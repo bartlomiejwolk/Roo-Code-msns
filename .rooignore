@@ -1,1 +1,21 @@
+# Ignore everything by default
+*
+
+# Allow specific directories and all their contents recursively
+!/src/
+!/src/**
+!/build/
+!/build/**
+!/extern/
+!/extern/**
+!/macros/
+!/macros/**
+!/PrefabinatorData/
+!/PrefabinatorData/**
+!/run/
+!/run/**
+!/scripts/
+!/scripts/**
+
+# Re-ignore .env files
 .env
