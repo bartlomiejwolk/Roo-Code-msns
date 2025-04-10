@@ -66,7 +66,7 @@ interface SearchLineResult {
 	column?: number
 }
 // Constants
-const MAX_RESULTS = 300
+const MAX_RESULTS = 600
 const MAX_LINE_LENGTH = 500
 
 /**
