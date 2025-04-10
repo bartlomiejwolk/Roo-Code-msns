@@ -15,12 +15,13 @@ export async function searchFilesTool(
 	removeClosingTag: RemoveClosingTag,
 ) {
 	const relDirPath: string | undefined = block.params.path
-	const regex: string | undefined = block.params.regex
+	// Accept either regex or text parameter, prioritizing text if both are provided
+	const searchText: string | undefined = block.params.text || block.params.regex
 	const filePattern: string | undefined = block.params.file_pattern
 	const sharedMessageProps: ClineSayTool = {
 		tool: "searchFiles",
 		path: getReadablePath(cline.cwd, removeClosingTag("path", relDirPath)),
-		regex: removeClosingTag("regex", regex),
+		regex: removeClosingTag("text", searchText) || removeClosingTag("regex", searchText),
 		filePattern: removeClosingTag("file_pattern", filePattern),
 	}
 	try {
@@ -37,9 +38,10 @@ export async function searchFilesTool(
 				pushToolResult(await cline.sayAndCreateMissingParamError("search_files", "path"))
 				return
 			}
-			if (!regex) {
+			if (!searchText) {
 				cline.consecutiveMistakeCount++
-				pushToolResult(await cline.sayAndCreateMissingParamError("search_files", "regex"))
+				// Check if text was provided, if not, show error for text parameter
+				pushToolResult(await cline.sayAndCreateMissingParamError("search_files", "text"))
 				return
 			}
 			cline.consecutiveMistakeCount = 0
@@ -47,7 +49,7 @@ export async function searchFilesTool(
 			const results = await regexSearchFiles(
 				cline.cwd,
 				absolutePath,
-				regex,
+				searchText,
 				filePattern,
 				cline.rooIgnoreController,
 			)

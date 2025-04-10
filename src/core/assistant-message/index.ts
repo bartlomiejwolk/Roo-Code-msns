@@ -100,7 +100,7 @@ export interface InsertCodeBlockToolUse extends ToolUse {
 
 export interface SearchFilesToolUse extends ToolUse {
 	name: "search_files"
-	params: Partial<Pick<Record<ToolParamName, string>, "path" | "regex" | "file_pattern">>
+	params: Partial<Pick<Record<ToolParamName, string>, "path" | "regex" | "file_pattern" | "text">>
 }
 
 export interface ListFilesToolUse extends ToolUse {
