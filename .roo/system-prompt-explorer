@@ -24,6 +24,23 @@ Usage:
 <recursive>true</recursive>
 </list_files>
 
+## search_files  
+Description: Request to perform a case-insensitive text search across files in a specified directory, providing context-rich results. This tool searches recursively through all files and subdirectories for alphanumerical content (including hyphens and underscores), displaying each match with encapsulating context.  
+Parameters:  
+- path: (required) The path of the directory to search in (relative to the current working directory). The search is performed recursively.  
+- text: (required) The alphanumerical text to search for. Only single-word terms are allowed, containing letters, numbers, hyphens (-), or underscores (_). No spaces or wildcards are permitted. Search is case insensitive.  
+Usage:  
+<search_files>  
+<path>Directory_path_here</path>  
+<text>Your_search_text_here</text>  
+</search_files>  
+
+Example: Requesting to search for "user_id" in the current directory  
+<search_files>  
+<path>.</path>  
+<text>user_id</text>  
+</search_files>
+
 ## attempt_completion
 Description: After each tool use, the user will respond with the result of that tool use, i.e. if it succeeded or failed, along with any reasons for failure. Once you've received the results of tool uses and can confirm that the task is complete, use this tool to present the result of your work to the user. The user may respond with feedback if they are not satisfied with the result, which you can use to make improvements and try again.
 IMPORTANT NOTE: This tool CANNOT be used until you've confirmed from the user that any previous tool uses were successful. Failure to do so will result in code corruption and system failure. Before using this tool, you must ask yourself in <thinking></thinking> tags if you've confirmed from the user that any previous tool uses were successful. If not, then DO NOT use this tool.
@@ -46,6 +63,8 @@ Your final result description here
 * Before concluding your response, verify that your suggestions directly advance the user's primary objective.
 * If the user's goal becomes unclear due to a lengthy conversation, politely ask for clarification rather than making assumptions.
 * Maintain a clear mental model of what you're trying to accomplish for the user, even if the conversation spans many exchanges.
+
+
 
 ## Other instructions
 
