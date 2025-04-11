@@ -15,13 +15,12 @@ export async function searchFilesTool(
 	removeClosingTag: RemoveClosingTag,
 ) {
 	const relDirPath: string | undefined = block.params.path
-	// Accept either regex or text parameter, prioritizing text if both are provided
-	const searchText: string | undefined = block.params.text || block.params.regex
+	const regex: string | undefined = block.params.regex
 	const filePattern: string | undefined = block.params.file_pattern
 	const sharedMessageProps: ClineSayTool = {
 		tool: "searchFiles",
 		path: getReadablePath(cline.cwd, removeClosingTag("path", relDirPath)),
-		regex: removeClosingTag("text", searchText) || removeClosingTag("regex", searchText),
+		regex: removeClosingTag("regex", regex),
 		filePattern: removeClosingTag("file_pattern", filePattern),
 	}
 	try {
@@ -38,10 +37,9 @@ export async function searchFilesTool(
 				pushToolResult(await cline.sayAndCreateMissingParamError("search_files", "path"))
 				return
 			}
-			if (!searchText) {
+			if (!regex) {
 				cline.consecutiveMistakeCount++
-				// Check if text was provided, if not, show error for text parameter
-				pushToolResult(await cline.sayAndCreateMissingParamError("search_files", "text"))
+				pushToolResult(await cline.sayAndCreateMissingParamError("search_files", "regex"))
 				return
 			}
 			cline.consecutiveMistakeCount = 0
@@ -49,7 +47,7 @@ export async function searchFilesTool(
 			const results = await regexSearchFiles(
 				cline.cwd,
 				absolutePath,
-				searchText,
+				regex,
 				filePattern,
 				cline.rooIgnoreController,
 				true // Make search case-insensitive by default
