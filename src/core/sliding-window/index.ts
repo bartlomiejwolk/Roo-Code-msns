@@ -130,6 +130,8 @@ export async function summarizeConversation(
   apiHandler: ApiHandler,
 ): Promise<Anthropic.Messages.MessageParam[]> {
   if (messages.length <= 1) return messages;
+  
+  const firstUserMessage = messages[0];  // Assume first message is the full task description.
 
   // Always keep last message completely raw
   const lastMessage = messages[messages.length - 1];
@@ -189,6 +191,7 @@ Make it detailed (4-5 paragraphs) while keeping it concise and technical. Avoid 
     }
 
     const summarizedMessages: Anthropic.Messages.MessageParam[] = [
+      firstUserMessage,  // Prepend the full task description.
       {
         role: "assistant" as const,
         content: `### TECHNICAL CONTEXT RECAP ###\n${summaryContent}`
