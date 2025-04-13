@@ -1,7 +1,5 @@
 Please provide a comprehensive technical summary covering all key points in paragraph form. 
 
-Address the original task description exactly as stated.
-
 Include all relevant files with their full paths; every important symbol (functions, classes, variables) we discussed; all major decisions made and the reasoning behind them; any errors encountered and how we fixed them; all commands executed and their outcomes; and the current state of the task. 
 
 When summarizing conversations, identify and consolidate duplicate information, mention each unique point only once, and prioritize key insights, decisions, and unresolved issues. 

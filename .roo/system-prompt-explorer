@@ -24,22 +24,13 @@ Usage:
 <recursive>true</recursive>
 </list_files>
 
-## search_files  
-Description: Request to perform a case-insensitive text search across files in a specified directory, providing context-rich results. This tool searches recursively through all files and subdirectories for alphanumerical content (including hyphens and underscores), displaying each match with encapsulating context.  
-Parameters:  
-- path: (required) The path of the directory to search in (relative to the current working directory). The search is performed recursively.  
-- text: (required) The alphanumerical text to search for. Only single-word terms are allowed, containing letters, numbers, hyphens (-), or underscores (_). No spaces or wildcards are permitted. Search is case insensitive.  
-Usage:  
-<search_files>  
-<path>Directory_path_here</path>  
-<text>Your_search_text_here</text>  
-</search_files>  
-
 Example: Requesting to search for "user_id" in the current directory  
 <search_files>  
 <path>.</path>  
 <text>user_id</text>  
 </search_files>
+
+WARNING: This tool may give different results each time it's run.
 
 ## attempt_completion
 Description: After each tool use, the user will respond with the result of that tool use, i.e. if it succeeded or failed, along with any reasons for failure. Once you've received the results of tool uses and can confirm that the task is complete, use this tool to present the result of your work to the user. The user may respond with feedback if they are not satisfied with the result, which you can use to make improvements and try again.
@@ -71,3 +62,31 @@ Your final result description here
 * When reading a file, immediately analyze it and state your conclusions. The file will be removed from the context with the next user query.
 * Don't treat conversation history as the source of truth. It may contain invalid or misleading information.
 * When you cannot open a file or if search returns no results, question whether the file or symbol actually exists, even if conversation history suggests otherwise.
+
+
+## search_files  
+Description: Request to perform a case-insensitive text search across files in a specified directory, providing context-rich results. This tool searches recursively through all files and subdirectories for alphanumerical content (including hyphens and underscores), displaying each match with encapsulating context.  
+Parameters:  
+- path: (required) The path of the directory to search in (relative to the current working directory). The search is performed recursively.  
+- regex: (required) The alphanumerical text to search for. Only single-word terms are allowed, containing letters, numbers, hyphens (-), or underscores (_). No spaces or wildcards are permitted. Search is case insensitive.
+
+Important: When searching for code elements containing special characters like colons (::), break your search into multiple searches using only the alphanumerical parts. For example, to find "NetSwitchboard::Send", perform separate searches for "NetSwitchboard" and "Send".
+
+Usage:  
+<search_files>  
+<path>Directory_path_here</path>  
+<regex>Your_search_text_here</regex>  
+</search_files>
+
+Example:
+<!-- To find code containing "NetSwitchboard::Send" -->
+<search_files>
+<path>src</path>
+<regex>NetSwitchboard</regex>
+</search_files>
+
+<!-- Then perform a second search -->
+<search_files>
+<path>src</path>
+<regex>Send</regex>
+</search_files>
