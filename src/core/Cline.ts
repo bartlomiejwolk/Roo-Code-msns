@@ -2306,7 +2306,7 @@ export class Cline extends EventEmitter<ClineEvents> {
 				details += "(Desktop files not shown automatically. Use list_files to explore if needed.)"
 			} else {
 				const maxFiles = maxWorkspaceFiles ?? 200
-				const [files, didHitLimit] = await listFiles(this.cwd, true, maxFiles)
+				const [files, didHitLimit] = await listFiles(this.cwd, false, maxFiles)
 				const { showRooIgnoredFiles = true } = (await this.providerRef.deref()?.getState()) ?? {}
 				const result = formatResponse.formatFilesList(
 					this.cwd,
