@@ -40,6 +40,41 @@ async function getPromptContent(fileName: string, defaultContent: string): Promi
 
 const outputChannel = vscode.window.createOutputChannel("Anthropic Sliding Window")
 
+async function logApiCall(
+  type: 'task' | 'summarization',
+  prompt: string,
+  messages: Anthropic.Messages.MessageParam[],
+  apiHandler: ApiHandler
+) {
+  try {
+    const tokens = await logTokenCount(messages, apiHandler, `${type} call input`);
+    outputChannel.appendLine(`Sending ${type} LLM call with ${messages.length} messages (~${tokens} tokens)`);
+    outputChannel.appendLine(`System prompt: ${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}`);
+    if (messages.length > 0) {
+      outputChannel.appendLine(`First message: ${JSON.stringify(messages[0].content).slice(0, 100)}...`);
+    }
+  } catch (error) {
+    outputChannel.appendLine(`Failed to log ${type} LLM call: ${error}`);
+  }
+}
+
+async function logTokenCount(content: Anthropic.Messages.MessageParam[], apiHandler: ApiHandler, description: string) {
+  try {
+    const tokens = await estimateTokenCount(
+      content.flatMap(m => typeof m.content === 'string' 
+        ? [{ type: 'text', text: m.content }] 
+        : m.content
+      ),
+      apiHandler
+    );
+    outputChannel.appendLine(`${description} token count: ${tokens}`);
+    return tokens;
+  } catch (error) {
+    outputChannel.appendLine(`Failed to count tokens for ${description}: ${error}`);
+    return 0;
+  }
+}
+
 
 /**
  * Number of recent messages to preserve when truncating conversation history
@@ -129,13 +164,31 @@ export async function summarizeConversation(
   messages: Anthropic.Messages.MessageParam[],
   apiHandler: ApiHandler,
 ): Promise<Anthropic.Messages.MessageParam[]> {
+  outputChannel.appendLine(`Starting conversation summarization. Total messages: ${messages.length}.`);
+  
+  // Add token count for full conversation
+  await logTokenCount(messages, apiHandler, 'Full conversation');
+
   if (messages.length <= 1) return messages;
   
   const firstUserMessage = messages[0];  // Assume first message is the full task description.
-
-  // Always keep last message completely raw
   const lastMessage = messages[messages.length - 1];
+  
+  // Add token count for last message
+  await logTokenCount([lastMessage], apiHandler, 'Last message');
+
+  outputChannel.appendLine(
+    `First message (user query): ${
+      typeof firstUserMessage.content === "string"
+        ? firstUserMessage.content.slice(0, 50)
+        : "[complex content]"
+    }, Last message type: ${lastMessage.role}`
+  );
+
   const toSummarize = messages.slice(0, -1);
+  
+  // Add token count for messages to summarize
+  await logTokenCount(toSummarize, apiHandler, 'Messages to summarize');
 
   // Define the default text for the appended user prompt
   const defaultPrompt1 = `Please provide a comprehensive technical summary covering all key points. Include:
@@ -151,6 +204,7 @@ Make it detailed (4-5 paragraphs) while keeping it concise and technical. Avoid 
 
   // Load prompt1 from file (it will be created if missing)
   const prompt1 = await getPromptContent("context-summary-prompt1.txt", defaultPrompt1);
+  outputChannel.appendLine(`Loaded prompt1 for context summary (length: ${prompt1.length}).`);
 
   const messagesToSummarize: Anthropic.Messages.MessageParam[] = [
     ...toSummarize,
@@ -159,6 +213,7 @@ Make it detailed (4-5 paragraphs) while keeping it concise and technical. Avoid 
       content: prompt1
     }
   ];
+  outputChannel.appendLine(`Prepared summary request with ${messagesToSummarize.length} messages.`);
 
   try {
     // Define the default text for the API call prompt
@@ -175,20 +230,37 @@ Make it detailed (4-5 paragraphs) while keeping it concise and technical. Avoid 
 
     // Load prompt2 from file (it will be auto-created using defaultPrompt2 if missing)
     const prompt2 = await getPromptContent("context-summary-prompt2.txt", defaultPrompt2);
+    outputChannel.appendLine(`Loaded prompt2 for API call (length: ${prompt2.length}).`);
+    outputChannel.appendLine(`Sending summary request to API. Prompt snippet: "${prompt2.slice(0,50)}...", Messages count: ${messagesToSummarize.length}.`);
+    
+    // Add token count for summary request
+    await logTokenCount(messagesToSummarize, apiHandler, 'Summary request payload');
+    await logApiCall('summarization', prompt2, messagesToSummarize, apiHandler);
 
     const summaryResponse = await apiHandler.createMessage(
       prompt2,
       messagesToSummarize
     );
 
-    let summaryContent: string = ""
+    let summaryContent: string = "";
+    let outputTokens = 0;
     for await (const chunk of summaryResponse) {
+        outputChannel.appendLine(`Received summary response chunk of type: ${chunk.type}${
+          chunk.type === "text" ? `, snippet: "${chunk.text.slice(0,50)}"` : ""
+        }`);
         if (chunk.type === "text") {
-            summaryContent += chunk.text
-        } else if (chunk.type === "reasoning") {
-            // Optional: Handle reasoning chunks if needed
+            summaryContent += chunk.text;
+            outputTokens += await logTokenCount(
+              [{ role: 'assistant', content: chunk.text }], 
+              apiHandler,
+              'Response chunk'
+            );
+        } else if (chunk.type === "usage") {
+            outputChannel.appendLine(`Token usage: input=${chunk.inputTokens}, output=${chunk.outputTokens}`);
+            outputTokens = chunk.outputTokens;
         }
     }
+    outputChannel.appendLine(`Completed API response. Total summary length: ${summaryContent.length} characters, ~${outputTokens} tokens.`);
 
     const summarizedMessages: Anthropic.Messages.MessageParam[] = [
       firstUserMessage,  // Prepend the full task description.
@@ -200,6 +272,7 @@ Make it detailed (4-5 paragraphs) while keeping it concise and technical. Avoid 
     ];
 
     // Log only the summarized context that will be sent to the main model
+    outputChannel.appendLine(`Attempting to log summarized context to file...`);
     try {
       const logPath = getContextLogPath()
       const logContent = summarizedMessages
